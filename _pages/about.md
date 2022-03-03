@@ -17,4 +17,3 @@ permalink: /about/
 
 ## Bigdata Analysis
 **[Bigdata Analysis](https://gangcheol.github.io/big-data-analysis/)**
-[^1]:a blogging platform that natively supports Jupyter notebooks in addition to other formats.
