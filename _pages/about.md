@@ -3,14 +3,18 @@ layout: page
 title: About Me
 permalink: /about/
 ---
-## github
+## Github
 **[github](https://github.com/gangcheol/)**
 
-## soundcloud
+## Soundcloud
 **[C.I.C](https://soundcloud.com/qfmtzwxyygft/albums)**
 
 ## NLP
 **[NLP](https://gangcheol.github.io/nlp-with-pytroch/)**
 
+## Data Mining
+**[Data Mining](https://gangcheol.github.io/data-mining/)**
 
+## Bigdata Analysis
+**[Bigdata Analysis](https://gangcheol.github.io/big-data-analysis/)**
 [^1]:a blogging platform that natively supports Jupyter notebooks in addition to other formats.
