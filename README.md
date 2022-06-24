@@ -6,3 +6,6 @@
 
 # My Blog
 https://gangcheol.github.io/data-mining/
+
+
+[total.csv](https://github.com/gangcheol/data-mining/files/8973116/total.csv)
