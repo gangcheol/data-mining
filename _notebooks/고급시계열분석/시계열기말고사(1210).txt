@@ -1,0 +1,340 @@
+# Package for Report
+library(tidyverse)
+library(lmtest)
+library(fpp2)
+library(lmtest)
+library(gridExtra)
+library(fUnitRoots)
+library(tseries)
+library(portes)
+
+filter  <- dplyr::filter ## 이거 안해주면 충돌....
+
+options(warn=-1)
+
+options(repr.plot.res=200,repr.plot.height=5,repr.plot.width=10)
+
+# mcopper
+
+## (1) 변수변환이 필요한지를 설명하고, 필요하다면 적절한 변수 변환을 하여라.
+
+data("mcopper")
+
+glimpse(mcopper)
+
+z <- mcopper
+t <- 1:length(mcopper)
+data1 <- tibble(t=t,z=z)
+
+plot(z,lwd=2)
+
+data1 <- data1 %>% mutate(ln_z = log(z),
+                          sqrt_z = sqrt(z),
+                          boxcox_z = BoxCox(z,lambda= BoxCox.lambda(z)))
+
+gather_d =data1 %>% 
+  gather(key="type",value="value",-t) %>% filter(!type %in%  "z")
+
+gather_d  %>% ggplot(aes(x=t,y=value)) +
+  geom_line(col="steelblue") +
+  facet_wrap(type~.) + theme_bw()
+
+## (2)
+auto.arima(data1$ln_z,trace=F,ic="aic") ## trace는 진행과정을 report할건지 아닌지
+
+
+## (3)
+plot(data1 %>% select(1,3),type="l")
+
+t.test(data1$ln_z)
+
+par(mfrow=c(1,2))
+Acf(data1$ln_z,lag.max = 40); Pacf(data1$ln_z,lag.max=40)
+
+adfTest(data1$ln_z,lags=0,type="ct")
+adfTest(data1$ln_z,lags=1,type="ct")
+adfTest(data1$ln_z,lags=2,type="ct")
+
+data1["diff_lnz"] <- c(0,diff(data1$ln_z))
+
+par(mfrow=c(1,2))
+plot(data1 %>% select(t,ln_z),type="l",main="차분 전")
+plot(data1 %>% select(t,diff_lnz),type="l",ylim=c(-1,1),main="차분 후")
+
+t.test(data1$diff_lnz)
+
+par(mfrow=c(1,2))
+Acf(data1$diff_lnz,lag.max=40);Pacf(data1$diff_lnz,lag.max=40)
+
+fit1 <- arima(data1$ln_z,order=c(2,1,0))
+fit1
+
+## (4)
+fit <- arima(data1$ln_z,order=c(0,1,1))
+fit
+
+fit1
+
+mse <- rep(c(fit$sigma2,fit1$sigma2))
+aic  <- rep(c(fit$aic,fit1$aic))
+label <- rep(c("ARIMA(0,1,1)","ARIMA(2,1,0)"))
+
+
+summary_table <- tibble(label,mse,aic) %>% gather(key="var",value="value",-label)
+
+g1 <- summary_table %>% filter(var %in% c("mse"))  %>% 
+  ggplot() +
+  geom_bar(aes(x=label,y=value,fill=label),stat="identity",alpha=0.4) +
+  theme_classic() +
+  coord_cartesian(ylim=c(0.0036,0.00364))+
+  labs(y="mse")
+g2 <- summary_table %>% filter(var %in% c("aic"))  %>% 
+  ggplot() +
+  geom_bar(aes(x=label,y=value,fill=label),stat="identity",alpha=0.4) +
+  theme_classic() +
+  coord_cartesian(ylim=c(-1560,-1557)) +
+  labs(y="AIC")
+
+grid.arrange(g1, g2, ncol=2)
+
+## (5)
+resid1 <- resid(fit)
+data1["resid"] <- resid1
+
+par(mfrow=c(1,2))
+plot(data1 %>% select(t,resid),main="잔차 plot",lwd=2,type="l",ylim=c(-0.5,0.5))
+qqnorm(resid1)
+qqline(resid1,col=2)
+
+shapiro.test(data1$resid)  ##H0 : normal distribution
+jarque.bera.test(data1$resid)  ##JB test H0: normal
+
+
+par(mfrow=c(1,2))
+Acf(resid1,lag.max=40);Pacf(resid1,lag.max=40)
+
+## (6)
+predict <- forecast(fit,h=24)
+plot(predict,xlim=c(2004,2010),ylim=c(6,10))
+predict$mean
+#########################
+#########################
+
+# hsales
+
+## (1)
+glimpse(hsales)
+z <- hsales
+t <- 1:length(z)
+data2 <- tibble(t=t,z=z)
+
+plot(z,lwd=2,main="시도표")
+abline(v=seq(1975,1996,4),lwd=2,col="red")
+
+data2 <- data2 %>% mutate(ln_z = log(z),
+                          sqrt_z = sqrt(z),
+                          boxcox_z = BoxCox(z,lambda= BoxCox.lambda(z)))
+
+gather_d =data2 %>% 
+  gather(key="type",value="value",-t) %>% filter(!type %in%  "z")
+
+gather_d  %>% ggplot(aes(x=t,y=value)) +
+  geom_line(col="steelblue") +
+  facet_wrap(type~.) + theme_bw()
+
+## (2)
+plot(data2 %>% select(t,ln_z),type="l",main="로그변환 후 시도표",lwd=2,ylim=c(3,5))
+
+par(mfrow=c(1,2))
+Acf(data2$ln_z,lag.max=40);Pacf(data2$ln_z,lag.max=40)
+
+
+data2  <- data2 %>% 
+  mutate(diff_lnz = c(0,diff(ln_z)))
+
+plot(data2 %>% select(t,diff_lnz),type="l",lwd=2,ylim=c(-0.5,0.5))
+
+par(mfrow=c(1,2))
+Acf(data2$diff_lnz); Pacf(data2$diff_lnz)
+
+data2 <- data2 %>% 
+  mutate(diff_lnz_s =c(rep(0,12),diff(diff_lnz,12)))
+
+plot(data2 %>% select(t,diff_lnz_s),type="l",lwd=2,ylim=c(-1,1))
+
+par(mfrow=c(1,2))
+Acf(data2$diff_lnz_s,lag.max=40); Pacf(data2$diff_lnz_s,lag.max=40)
+
+adfTest(data2$diff_lnz_s,lags=0,type="c")
+adfTest(data2$diff_lnz_s,lags=1,type="c")
+adfTest(data2$diff_lnz_s,lags=2,type="c")
+
+## (3)
+par(mfrow=c(1,2))
+Acf(data2$diff_lnz_s,lag.max=40); Pacf(data2$diff_lnz_s,lag.max=40)
+
+
+## (4)
+sma1_fit <- arima(data2$diff_lnz_s,order=c(0,1,0),
+                  seasonal = list(order=c(0,1,1), period=12))
+
+sma1_fit
+
+sma1_fit$coef
+
+sar2_fit <- arima(data2$diff_lnz_s,order=c(0,1,0),
+                  seasonal = list(order=c(2,1,0), period=12))
+sar2_fit
+
+## (5)
+mse <- rep(c(sma1_fit$sigma2,sar2_fit$sigma2))
+aic  <- rep(c(sma1_fit$aic,sar2_fit$aic))
+label <- rep(c("SMA(1)","SAR(2)"))
+
+summary_table <- tibble(label,mse,aic) %>% gather(key="var",value="value",-label)
+summary_table
+g1 <- summary_table %>% filter(var %in% c("mse"))  %>% 
+  ggplot() +
+  geom_bar(aes(x=label,y=value,fill=label),stat="identity",alpha=0.4) +
+  theme_classic() +
+  coord_cartesian(ylim=c(0.03,0.035))+
+  labs(y="mse")
+g2 <- summary_table %>% filter(var %in% c("aic"))  %>% 
+  ggplot() +
+  geom_bar(aes(x=label,y=value,fill=label),stat="identity",alpha=0.4) +
+  theme_classic() +
+  coord_cartesian(ylim=c(-130,-110)) +
+  labs(y="AIC")
+
+## (6)
+data2["resid"] <- resid(sma1_fit)
+
+par(mfrow=c(1,2))
+plot(data2 %>% select(t,resid),xlim=c(12,nrow(data2)),type="l",lwd=2,ylim=c(-1,1),main="SMA(1) 잔차 plot")
+qqnorm(data2$resid[12:nrow(data2)])
+qqline(data2$resid[12:nrow(data2)],col=2)
+
+shapiro.test(data2$resid)  ##H0 : normal distribution
+jarque.bera.test(data2$resid)  ##JB test H0: normal
+
+par(mfrow=c(1,2))
+Acf(data2$resid,lag.max=40);Pacf(data2$resid,lag.max=40)
+
+LjungBox(sma1_fit)
+
+
+## (7)
+predict <- forecast(sma1_fit,h=24)
+plot(predict,xlim=c(250,300))
+
+range(predict$mean)
+
+################################
+###############################
+
+# ukcars
+
+## (1)
+glimpse(ukcars)
+
+z  <- ukcars
+t <- 1:length(z)
+data3 <- tibble(t,z)
+
+plot(t,z, lwd=2, main="시도표",type="l")
+
+data3 <- data3 %>% mutate(ln_z = log(z),
+                          sqrt_z = sqrt(z),
+                          boxcox_z = BoxCox(z,lambda= BoxCox.lambda(z)))
+
+gather_d =data3 %>% 
+  gather(key="type",value="value",-t) %>% filter(!type %in%  "z")
+
+gather_d  %>% ggplot(aes(x=t,y=value)) +
+  geom_line(col="steelblue") +
+  facet_wrap(type~.) + theme_bw()
+
+gather_d   %>% 
+  filter(!type %in%  "boxcox_z") %>% ggplot(aes(x=t,y=value)) +
+  geom_line(col="steelblue") +
+  facet_wrap(type~.) + theme_bw()
+
+## (2)
+test <- tail(data3,5)
+train <- data3  %>% setdiff(test)
+
+nrow(intersect(test,train))
+
+## (3)
+library(TTR)
+
+ma_fit <- stl(ts(train$ln_z,start=1977,frequency = 4),s.window = "period")
+
+ma_pred <- forecast(ma_fit)
+ma_pred
+
+plot(ma_pred,main="MA Forecast")
+ma_pred_value <- ma_pred$mean[1:5]
+
+
+## (4)
+plot(train$ln_z,type="l",main="훈련 데이터의 시도표",lwd=2)
+
+library(stats)
+holt_fit <- HoltWinters(ts(train$ln_z,start=1977,frequency = 4))
+
+holt_pred <- forecast(holt_fit)
+
+holt_pred
+
+plot(holt_pred)
+
+holt_pred_value <- holt_pred$mean[1:5]
+
+## (5)
+par(mfrow=c(1,2))
+Acf(train$ln_z);Pacf(train$ln_z)
+
+train <- train %>%    
+  mutate(diff_lnz_s =c(rep(0,4),diff(ln_z,4)))
+
+par(mfrow=c(1,2))
+Acf(train$diff_lnz_s);Pacf(train$diff_lnz_s)
+
+#adfTest(train$diff_lnz_s,lags=0)
+#adfTest(train$diff_lnz_s,lags=4)
+#adfTest(train$diff_lnz_s,lags=8)
+
+sar2_fit <- arima(train$diff_lnz_s,order=c(0,0,0),
+                  seasonal = list(order=c(2,1,0), period=4))
+
+s_pred <- forecast(sar2_fit)
+
+s_pred
+
+plot(s_pred)
+
+s_pred_value <- s_pred$mean[1:5]
+
+## (6)
+par(mfrow=c(2,2))
+plot(ma_pred,maiㅁn="MA Forecast");plot(holt_pred);plot(s_pred)
+
+test_diff <- tail(c(0,diff(data3$ln_z)),5)
+
+ma_diff <- mean((test$ln_z - ma_pred_value)^2)
+holt_diff <-mean((test$ln_z - holt_pred_value)^2)
+s_diff <- mean((test_diff - s_pred_value)^2)
+
+test_mse <- c(ma_diff,holt_diff,s_diff)
+
+label <- c("이동평균","계절지수","SAR(2)")
+mse_table  <- tibble(test_mse,label)
+mse_table
+
+
+mse_table %>% ggplot(aes(x=label,y=test_mse,fill=label))+
+  geom_bar(stat="identity",alpha=0.3) +
+  theme_classic() + ylab("TEST MSE") +
+  theme(axis.title.y = element_text(angle=0))+
+  coord_cartesian(ylim=c(0,0.015))
